@@ -1,9 +1,11 @@
+# Made by Enrique Villa, Grade 12 Da Vinci, SY 2022-2023
+
 import logging
 from datetime import datetime as dt
+import utils
 import argparse
 from flask import Flask, Response, request
 
-# Made by Enrique Villa, Grade 12 Da Vinci, SY 2022-2023
 
 # Set up the Flask server
 # A good Flask tutorial: https://www.youtube.com/watch?v=Z1RJmh_OqeA&t=2358s
@@ -24,6 +26,13 @@ parser.add_argument('-l', '--level',
                     help='Set logging level (1-5)',
                     action='store',
                     type=int)
+
+parser.add_argument('-p', '--port',
+                    dest='port',
+                    help='Change web port TapAPI will run in',
+                    action='store',
+                    type=utils.port_type)
+
 parser.add_argument('-b', '--blind',
                     dest='blind',
                     help='Don\'t make the server panic on recognition of new cards',
@@ -36,9 +45,9 @@ args = parser.parse_args()
 # This way, if the server crashes, we still have a text file to read and see the cause of crash
 # or determine where the server stopped
 
-# Filename using datetime library (string FORMAT time method, hence strftime! NOT strptime!)
+# Make filename using datetime library (string FORMAT time method, hence strftime! NOT strptime!)
 # Good resource - https://strftime.org
-# Will show up as Jan_01_07_00_PM, for example (based on system clock)
+# Will show up as Jan_01_01_00_AM.txt, for example (based on system clock)
 filename = str(dt.now().strftime("%b_%d_%I_%M_%p")) + ".txt"
 
 # Logging library setup
@@ -65,5 +74,6 @@ def route_event():
 
 
 if __name__ == '__main__':
+    logging.warning(f'Running TapAPI on port {args.port}, debug level {args.level} and blind mode {args.blind}')
     # If you ever want to test the server on the same machine, do a requests.put on http://localhost:5000
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=args.port)
