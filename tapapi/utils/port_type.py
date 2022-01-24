@@ -1,5 +1,3 @@
-# Made by Enrique Villa, Grade 12 Da Vinci, SY 2022-2023
-# File for utilities, saving the main server file from clutter
 import argparse
 
 

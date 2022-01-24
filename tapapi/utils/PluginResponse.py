@@ -1,12 +1,11 @@
 class PluginResponse:
     """
     Response class to handle plug-in responses
-    Works with just a response code or return a payload
+    Works with just a simple response code or return a payload
     """
-    def __init__(self, response_code: int, payload: dict = {}, abort: bool = False):
+    def __init__(self, response_code: int, payload: dict = {}):
         self.response_code = response_code
         self.payload_response = payload
-        self.abort = abort
 
     @property
     def has_payload(self):

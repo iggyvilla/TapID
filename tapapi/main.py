@@ -1,6 +1,7 @@
 # Made by Enrique Villa, Grade 12 Da Vinci, SY 2022-2023
 
 import logging
+import os
 from datetime import datetime as dt
 import utils
 import argparse
@@ -16,7 +17,6 @@ app = Flask(__name__)
 # This way, when launching the server, certain configurations can be made when launching the python file using
 # the python command (ex. python3.9 main.py --level 1)
 # Read more: https://docs.python.org/2/library/argparse.html#module-argparse
-
 parser = argparse.ArgumentParser(
     description="Meet the TapID authentication server, TapAPI. Run with arguments or none to use default settings."
 )
@@ -50,30 +50,41 @@ args = parser.parse_args()
 # Will show up as Jan_01_01_00_AM.txt, for example (based on system clock)
 filename = str(dt.now().strftime("%b_%d_%I_%M_%p")) + ".txt"
 
-# Logging library setup
+# LOGGER SETUP
+log = logging.getLogger('main.logger')
+
 # Logging has different levels (NOTESET, DEBUG, INFO, WARNING, ERROR, CRITICAL)
 # Depending on how we set it up, then the server will spit out more or less information
 # We use a ternary operator here (read more: https://www.geeksforgeeks.org/ternary-operator-in-python/)
-logging.basicConfig(level=args.level * 10 if args.level % 10 == 0 and args.level <= 50 else 10,
-                    format=f'%(asctime)s %(levelname)s > %(message)s',
-                    handlers=[
-                        # logging.FileHandler(os.path.join("logs/", filename)),
-                        logging.StreamHandler()
-                    ])
+log.setLevel(args.level * 10 if args.level % 10 == 0 and args.level <= 50 else 10)
 
-logging.debug('Logging and basic server setup complete!')
+# Handlers let us tell the logger where to spit out the logs
+# In this case, we tell it to send it to a log file (via FileHandler) and the console (via StreamHandler)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(f' %(asctime)s  %(filename)s  [%(levelname)s] %(message)s '))
+log.addHandler(logging.FileHandler(os.path.join("logs/", filename)))
+log.addHandler(handler)
 
 
-# Time to get into the main event ;)
+log.debug('Logging and basic server setup complete!')
 
+log.info('Loading plugins...')
+
+with open('config.json', 'r') as f:
+    plugin_dict = utils.load_plugins(f=f, logger=log)
+
+log.info('Success!')
+
+
+# The main course
 @app.route("/event", methods=["PUT"])
 def route_event():
     payload = request.get_json()
-    logging.info(payload)
+    log.info(payload)
     return Response("Test", 200)
 
 
 if __name__ == '__main__':
-    logging.warning(f'Running TapAPI on port {args.port}, debug level {args.level} and blind mode {args.blind}')
+    log.warning(f'Running TapAPI on port {args.port}, debug level {args.level} and blind mode {args.blind}')
     # If you ever want to test the server on the same machine, do a requests.put on http://localhost:5000
     app.run(debug=True, port=args.port)
