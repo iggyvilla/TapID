@@ -5,8 +5,8 @@ class PluginResponse:
     """
     def __init__(self, response_code: int, payload: dict = {}):
         self.response_code = response_code
-        self.payload_response = payload
+        self.payload = payload
 
     @property
     def has_payload(self):
-        return bool(self.payload_response)
+        return bool(self.payload)

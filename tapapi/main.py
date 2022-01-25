@@ -2,11 +2,14 @@
 
 import logging
 import os
-from datetime import datetime as dt
 import utils
 import argparse
-from flask import Flask, Response, request
-
+import psycopg2
+import jwt.exceptions
+from datetime import datetime as dt
+from utils.responses.PluginResponse import PluginResponse
+from utils.responses.PluginAbort import PluginAbort
+from flask import Flask, Response, request, abort, jsonify
 
 # Set up the Flask server
 # A good Flask tutorial: https://www.youtube.com/watch?v=Z1RJmh_OqeA&t=2358s
@@ -37,6 +40,16 @@ parser.add_argument('-b', '--blind',
                     dest='blind',
                     help='Don\'t make the server panic on recognition of new cards',
                     action='store_true')
+# TODO: ADD USAGE
+parser.add_argument('-user', '--db-user',
+                    dest='blind',
+                    help='PostgresQL user password',
+                    action='store_true')
+
+parser.add_argument('-pass', '--db-password',
+                    dest='blind',
+                    help='PostgreSQL database password',
+                    action='store_true')
 
 args = parser.parse_args()
 
@@ -56,32 +69,69 @@ log = logging.getLogger('main.logger')
 # Logging has different levels (NOTESET, DEBUG, INFO, WARNING, ERROR, CRITICAL)
 # Depending on how we set it up, then the server will spit out more or less information
 # We use a ternary operator here (read more: https://www.geeksforgeeks.org/ternary-operator-in-python/)
-log.setLevel(args.level * 10 if args.level % 10 == 0 and args.level <= 50 else 10)
+log_level = args.level * 10 if args.level % 10 == 0 and args.level <= 50 else 10
+log.setLevel(log_level)
 
 # Handlers let us tell the logger where to spit out the logs
 # In this case, we tell it to send it to a log file (via FileHandler) and the console (via StreamHandler)
+tapapi_logging_format = ' %(asctime)s  %(filename)-10s  [%(levelname)7s]  %(message)s '
+
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter(f' %(asctime)s  %(filename)s  [%(levelname)s] %(message)s '))
-log.addHandler(logging.FileHandler(os.path.join("logs/", filename)))
+handler.setFormatter(logging.Formatter(tapapi_logging_format))
+
+filehandler = logging.FileHandler(os.path.join("logs/", filename))
+filehandler.setFormatter(logging.Formatter(tapapi_logging_format))
+filehandler.setLevel(log_level)
+
+log.addHandler(filehandler)
 log.addHandler(handler)
 
-
-log.debug('Logging and basic server setup complete!')
+log.debug('Logging and basic server setup complete! Re-run with -h or --help flag to see arguments')
 
 log.info('Loading plugins...')
-
 with open('config.json', 'r') as f:
     plugin_dict = utils.load_plugins(f=f, logger=log)
 
-log.info('Success!')
+conn = psycopg2.connect(user="enriquevilla",
+                        password=os.environ['DB_PASSWORD'],
+                        host="localhost",
+                        port="5432",
+                        database="tapid")
 
 
-# The main course
 @app.route("/event", methods=["PUT"])
 def route_event():
     payload = request.get_json()
-    log.info(payload)
-    return Response("Test", 200)
+    log.info(f'Received PUT request with payload, (keys: {", ".join(list(payload.keys()))}).')
+    try:
+        payload_data = utils.parse_payload(payload)
+    except KeyError:
+        log.info('400 BAD REQUEST.')
+        abort(Response("Invalid payload. Follow the format detailed in the GitHub page.", 400))
+        return
+
+    public_key = utils.authentication.get_public_key_from_uid(
+        uid=payload_data.uid,
+        conn=conn,
+        save_priv_key_on_new_uid=True
+    )
+
+    try:
+        jwt_decoded = utils.authentication.verify_jwt_with_public_key(payload_data.jwt, bytes(public_key, 'utf-8'))
+
+        event_func = plugin_dict.get(payload_data.event_name, None)
+
+        if event_func:
+            resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
+
+            if type(resp) == PluginResponse:
+                return jsonify(resp.payload), resp.response_code
+            if type(resp) == PluginAbort:
+                return abort(Response(resp.reason, resp.response_code))
+
+    except jwt.exceptions.InvalidSignatureError:
+        log.warning('Invalid signature detected. Investigate card immediately.')
+        abort(Response("Invalid signature. Card UID does not decrypt properly.", 403))
 
 
 if __name__ == '__main__':
