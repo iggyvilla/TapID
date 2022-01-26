@@ -6,7 +6,6 @@ import psycopg2
 import jwt.exceptions
 from datetime import datetime as dt
 from utils.configure_logger import configure_logger
-from utils.responses.PluginAbort import PluginAbort
 from utils.configure_argparse import configure_argparse
 from utils.responses.PluginResponse import PluginResponse
 from flask import Flask, Response, request, abort, jsonify
@@ -87,11 +86,12 @@ def route_event():
             if type(resp) == PluginResponse:
                 log.info(f'Received PluginResponse from \"{payload_data.event_name}\"')
                 return jsonify(resp.payload), resp.response_code
-            elif type(resp) == PluginAbort:
-                return abort(Response(resp.reason, resp.response_code))
             else:
                 log.critical('Invalid plug-in return type. TapAPI plug-ins should only return a PluginResponse.')
                 return Response('Invalid plug-in return type.', 501)
+        else:
+            log.critical(f'Unknown event name \"{payload_data.event_name}\"!')
+            return Response('Unknown event name. Did you configure the plug-in or Ground Module properly?', 400)
 
     except jwt.exceptions.InvalidSignatureError:
         # If the card doesn't decrypt properly, something suspicious is up
