@@ -28,12 +28,14 @@ parser.add_argument('-l', '--level',
                     dest='level',
                     help='Set logging level (1-5)',
                     action='store',
+                    default=1,
                     type=int)
 
 parser.add_argument('-p', '--port',
                     dest='port',
                     help='Change web port TapAPI will run in',
                     action='store',
+                    required=True,
                     type=utils.port_type)
 
 parser.add_argument('-b', '--blind',
@@ -42,13 +44,15 @@ parser.add_argument('-b', '--blind',
                     action='store_true')
 # TODO: ADD USAGE
 parser.add_argument('-user', '--db-user',
-                    dest='blind',
-                    help='PostgresQL user password',
+                    dest='user',
+                    help='PostgreSQL user password',
+                    required=True,
                     action='store_true')
 
 parser.add_argument('-pass', '--db-password',
                     dest='blind',
                     help='PostgreSQL database password',
+                    required=True,
                     action='store_true')
 
 args = parser.parse_args()
@@ -72,19 +76,19 @@ log = logging.getLogger('main.logger')
 log_level = args.level * 10 if args.level % 10 == 0 and args.level <= 50 else 10
 log.setLevel(log_level)
 
-# Handlers let us tell the logger where to spit out the logs
+# Handlers tell the logger where to spit out the logs
 # In this case, we tell it to send it to a log file (via FileHandler) and the console (via StreamHandler)
 tapapi_logging_format = ' %(asctime)s  %(filename)-10s  [%(levelname)7s]  %(message)s '
 
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter(tapapi_logging_format))
+streamhandler = logging.StreamHandler()
+streamhandler.setFormatter(logging.Formatter(tapapi_logging_format))
 
 filehandler = logging.FileHandler(os.path.join("logs/", filename))
 filehandler.setFormatter(logging.Formatter(tapapi_logging_format))
 filehandler.setLevel(log_level)
 
 log.addHandler(filehandler)
-log.addHandler(handler)
+log.addHandler(streamhandler)
 
 log.debug('Logging and basic server setup complete! Re-run with -h or --help flag to see arguments')
 
@@ -106,10 +110,11 @@ def route_event():
     try:
         payload_data = utils.parse_payload(payload)
     except KeyError:
-        log.info('400 BAD REQUEST.')
+        log.info('400: Invalid payload.')
         abort(Response("Invalid payload. Follow the format detailed in the GitHub page.", 400))
         return
 
+    # If the payload is in the correct format, get the UID's public key
     public_key = utils.authentication.get_public_key_from_uid(
         uid=payload_data.uid,
         conn=conn,
@@ -117,6 +122,7 @@ def route_event():
     )
 
     try:
+        # Verify the attached JWT with the public key associated with the UID
         jwt_decoded = utils.authentication.verify_jwt_with_public_key(payload_data.jwt, bytes(public_key, 'utf-8'))
 
         event_func = plugin_dict.get(payload_data.event_name, None)
@@ -130,11 +136,12 @@ def route_event():
                 return abort(Response(resp.reason, resp.response_code))
 
     except jwt.exceptions.InvalidSignatureError:
-        log.warning('Invalid signature detected. Investigate card immediately.')
+        # If the card doesn't decrypt properly, something suspicious is up
+        log.warning(f'Invalid signature detected. Investigate card {payload_data.uid} immediately.')
         abort(Response("Invalid signature. Card UID does not decrypt properly.", 403))
 
 
 if __name__ == '__main__':
     log.warning(f'Running TapAPI on port {args.port}, debug level {args.level} and blind mode {args.blind}')
-    # If you ever want to test the server on the same machine, do a requests.put on http://localhost:5000
+    # If you ever want to test the server on the same machine, do a requests.put on http://localhost:<port>
     app.run(debug=True, port=args.port)
