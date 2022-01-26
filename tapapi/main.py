@@ -77,12 +77,15 @@ def route_event():
             json_web_token=payload_data.jwt,
             public_key=bytes(public_key, 'utf-8')
         )
+        log.info(f'Successfully authenticated \"{payload_data.uid}\"s JWT!')
 
         event_func = plugin_dict.get(payload_data.event_name, None)
 
+        # If the plug-in was configured properly, the plugin_dict should receive its run() function
         if event_func:
+            log.info(f'Imported {payload_data.event_name}\'s run() function, running it')
             resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
-
+            log.info(f'\"{payload_data.event_name}\" ran successfully!')
             if type(resp) == PluginResponse:
                 log.info(f'Received PluginResponse from \"{payload_data.event_name}\"')
                 return jsonify(resp.payload), resp.response_code
@@ -98,6 +101,7 @@ def route_event():
         log.critical(f'Invalid signature detected. Investigate card {payload_data.uid} immediately!')
         abort(Response("Invalid signature. Card UID does not decrypt properly.", 403))
 
+    # Always close the connection to free up resources
     conn.close()
 
 

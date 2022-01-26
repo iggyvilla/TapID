@@ -19,7 +19,7 @@ def configure_logger(log, args, filename):
 
     # Handlers tell the logger where to spit out the logs
     # In this case, we tell it to send it to a log file (via FileHandler) and the console (via StreamHandler)
-    tapapi_logging_format = ' %(asctime)s  %(filename)-10s  [%(levelname)8s]  %(message)s '
+    tapapi_logging_format = ' %(asctime)s  %(filename)-17s  [%(levelname)8s]  %(message)s '
 
     streamhandler = logging.StreamHandler()
     streamhandler.setFormatter(logging.Formatter(tapapi_logging_format))
