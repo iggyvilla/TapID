@@ -102,6 +102,6 @@ def route_event():
 
 
 if __name__ == '__main__':
-    log.warning(f'Running TapAPI on port {args.port}, debug level {args.level}')
+    log.warning(f'Welcome to TapAPI! Running on port {args.port}, debug level {args.level}')
     # If you ever want to test the server on the same machine, do a requests.put on http://localhost:<port>
     app.run(debug=True, port=args.port)

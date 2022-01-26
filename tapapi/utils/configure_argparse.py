@@ -1,8 +1,12 @@
 import argparse
-from port_type import port_type
+from utils.port_type import port_type
 
 
 def configure_argparse():
+    """
+    Configure argparse for TapAPI
+    :return: a TapAPI-configured ArgumentParser object
+    """
     parser = argparse.ArgumentParser(
         description="Meet the TapID authentication server, TapAPI. Run with arguments or none to use default settings."
     )
