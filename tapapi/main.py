@@ -42,13 +42,15 @@ parser.add_argument('-user', '--db-user',
                     dest='dbuser',
                     help='PostgreSQL user password',
                     required=True,
-                    action='store_true')
+                    action='store',
+                    type=str)
 
 parser.add_argument('-pass', '--db-password',
                     dest='dbpass',
                     help='PostgreSQL database password',
                     required=True,
-                    action='store_true')
+                    action='store',
+                    type=str)
 
 args = parser.parse_args()
 
@@ -91,11 +93,13 @@ log.info('Loading plugins...')
 with open('config.json', 'r') as f:
     plugin_dict = utils.load_plugins(f=f, logger=log)
 
-conn = psycopg2.connect(user=args.dbuser,
-                        password=args.dbpass,
-                        host="localhost",
-                        port="5432",
-                        database="tapid")
+
+def create_connection():
+    return psycopg2.connect(user=args.dbuser,
+                            password=args.dbpass,
+                            host="localhost",
+                            port="5432",
+                            database="tapid")
 
 
 @app.route("/event", methods=["PUT"])
@@ -108,6 +112,8 @@ def route_event():
         log.warning('400: Invalid payload.')
         abort(Response("Invalid payload. Follow the format detailed in the GitHub page.", 400))
         return
+
+    conn = create_connection()
 
     # If the payload is in the correct format, get the UID's public key
     public_key = utils.authentication.get_public_key_from_uid(
@@ -141,6 +147,8 @@ def route_event():
         # If the card doesn't decrypt properly, something suspicious is up
         log.critical(f'Invalid signature detected. Investigate card {payload_data.uid} immediately!')
         abort(Response("Invalid signature. Card UID does not decrypt properly.", 403))
+
+    conn.close()
 
 
 if __name__ == '__main__':
