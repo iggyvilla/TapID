@@ -122,7 +122,7 @@ def verify_jwt_with_public_key(json_web_token: str, public_key: bytes):
     :param public_key:
     :return: Decoded JWT if successful, jwt.exceptions.InvalidSignatureError if not
     """
-    _log.info(f'Decoding JWT \"{json_web_token[:6]}...\"')
+    _log.info(f'Verifying JWT \"{json_web_token[:6]}...\"')
     return jwt.decode(jwt=json_web_token, key=public_key, algorithms='RS256')
 
 

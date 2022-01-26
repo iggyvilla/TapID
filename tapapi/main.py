@@ -38,19 +38,14 @@ parser.add_argument('-p', '--port',
                     required=True,
                     type=utils.port_type)
 
-parser.add_argument('-b', '--blind',
-                    dest='blind',
-                    help='Don\'t make the server panic on recognition of new cards',
-                    action='store_true')
-# TODO: ADD USAGE
 parser.add_argument('-user', '--db-user',
-                    dest='user',
+                    dest='dbuser',
                     help='PostgreSQL user password',
                     required=True,
                     action='store_true')
 
 parser.add_argument('-pass', '--db-password',
-                    dest='blind',
+                    dest='dbpass',
                     help='PostgreSQL database password',
                     required=True,
                     action='store_true')
@@ -58,9 +53,9 @@ parser.add_argument('-pass', '--db-password',
 args = parser.parse_args()
 
 # Next, setup logging (equivalent to printing, but syntactically makes easier to read code and logs)
-# For instance, here we set it up to send to console AND a text file with the name as the date when main.py
+# For instance, here we set it up to send to console AND a text file with the name as the date
 # This way, if the server crashes, we still have a text file to read and see the cause of crash
-# or determine where the server stopped
+#  and determine where the server stopped
 
 # Make filename using datetime library (string FORMAT time method, hence strftime! NOT strptime!)
 # Good resource - https://strftime.org
@@ -78,7 +73,7 @@ log.setLevel(log_level)
 
 # Handlers tell the logger where to spit out the logs
 # In this case, we tell it to send it to a log file (via FileHandler) and the console (via StreamHandler)
-tapapi_logging_format = ' %(asctime)s  %(filename)-10s  [%(levelname)7s]  %(message)s '
+tapapi_logging_format = ' %(asctime)s  %(filename)-10s  [%(levelname)8s]  %(message)s '
 
 streamhandler = logging.StreamHandler()
 streamhandler.setFormatter(logging.Formatter(tapapi_logging_format))
@@ -96,8 +91,8 @@ log.info('Loading plugins...')
 with open('config.json', 'r') as f:
     plugin_dict = utils.load_plugins(f=f, logger=log)
 
-conn = psycopg2.connect(user="enriquevilla",
-                        password=os.environ['DB_PASSWORD'],
+conn = psycopg2.connect(user=args.dbuser,
+                        password=args.dbpass,
                         host="localhost",
                         port="5432",
                         database="tapid")
@@ -110,7 +105,7 @@ def route_event():
     try:
         payload_data = utils.parse_payload(payload)
     except KeyError:
-        log.info('400: Invalid payload.')
+        log.warning('400: Invalid payload.')
         abort(Response("Invalid payload. Follow the format detailed in the GitHub page.", 400))
         return
 
@@ -123,7 +118,10 @@ def route_event():
 
     try:
         # Verify the attached JWT with the public key associated with the UID
-        jwt_decoded = utils.authentication.verify_jwt_with_public_key(payload_data.jwt, bytes(public_key, 'utf-8'))
+        jwt_decoded = utils.authentication.verify_jwt_with_public_key(
+            json_web_token=payload_data.jwt,
+            public_key=bytes(public_key, 'utf-8')
+        )
 
         event_func = plugin_dict.get(payload_data.event_name, None)
 
@@ -131,17 +129,21 @@ def route_event():
             resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
 
             if type(resp) == PluginResponse:
+                log.info(f'Received PluginResponse from \"{payload_data.event_name}\"')
                 return jsonify(resp.payload), resp.response_code
-            if type(resp) == PluginAbort:
+            elif type(resp) == PluginAbort:
                 return abort(Response(resp.reason, resp.response_code))
+            else:
+                log.critical('Invalid plug-in return type. TapAPI plug-ins should only return a PluginResponse.')
+                return Response('Invalid plug-in return type.', 501)
 
     except jwt.exceptions.InvalidSignatureError:
         # If the card doesn't decrypt properly, something suspicious is up
-        log.warning(f'Invalid signature detected. Investigate card {payload_data.uid} immediately.')
+        log.critical(f'Invalid signature detected. Investigate card {payload_data.uid} immediately!')
         abort(Response("Invalid signature. Card UID does not decrypt properly.", 403))
 
 
 if __name__ == '__main__':
-    log.warning(f'Running TapAPI on port {args.port}, debug level {args.level} and blind mode {args.blind}')
+    log.warning(f'Running TapAPI on port {args.port}, debug level {args.level}')
     # If you ever want to test the server on the same machine, do a requests.put on http://localhost:<port>
     app.run(debug=True, port=args.port)
