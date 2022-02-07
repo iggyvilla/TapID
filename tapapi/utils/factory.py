@@ -1,9 +1,9 @@
 import importlib
 import json
-from typing import Dict, TextIO, Callable
+from typing import Dict, TextIO, Callable, Tuple
 
 
-def load_plugins(f: TextIO, logger) -> Dict[str, Callable]:
+def load_plugins(f: TextIO, logger) -> Tuple[Dict[str, Callable], dict]:
     """ Load the plug-ins via the config.json file and importlib """
     plugin_dict = {}
 

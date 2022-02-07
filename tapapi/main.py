@@ -4,7 +4,6 @@ import logging
 import utils
 import psycopg2
 import jwt.exceptions
-import json
 from datetime import datetime as dt
 from utils.configure_logger import configure_logger
 from utils.configure_argparse import configure_argparse
@@ -124,7 +123,21 @@ def route_event():
 
 @app.route("/metrics", methods=["POST"])
 def status():
-    print(request.args.get('test'))
+    """
+    Handles metrics
+    """
+    payload = request.get_json()
+    if ("event_name" in payload.keys()) and ("metric_data" in payload.keys()):
+        logging.info(f"Received metrics payload from {payload['event_name']}!")
+        utils.handle_metrics(
+            conn=create_connection(),
+            metric_data=payload["metric_data"],
+            event_name=payload["event_name"]
+        )
+    else:
+        # Metrics payload is invalid
+        logging.warning("Received invalid metrics payload")
+        return Response('Invalid payload', 400)
     return Response('OK', 200)
 
 
