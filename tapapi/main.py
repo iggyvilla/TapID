@@ -4,6 +4,7 @@ import logging
 import utils
 import psycopg2
 import jwt.exceptions
+import json
 from datetime import datetime as dt
 from utils.configure_logger import configure_logger
 from utils.configure_argparse import configure_argparse
@@ -40,6 +41,7 @@ log.debug('Logging and basic server setup complete! Re-run with -h or --help fla
 
 log.info('Loading plugins...')
 with open('config.json', 'r') as f:
+    config_dict = json.load(f)
     plugin_dict = utils.load_plugins(f=f, logger=log)
 
 
@@ -49,6 +51,15 @@ def create_connection():
                             host="localhost",
                             port="5432",
                             database="tapid")
+
+
+@app.route('/')
+def home_page():
+    payload = {
+        "api_version": config_dict.get('version', 'unknown'),
+        "status": "online"
+    }
+    return jsonify(payload), 200
 
 
 @app.route("/event", methods=["PUT"])
@@ -112,9 +123,10 @@ def route_event():
     conn.close()
 
 
-@app.route("/heartbeat", methods=["GET"])
+@app.route("/metrics", methods=["POST"])
 def status():
-    return 200
+    print(request.args.get('test'))
+    return Response('OK', 200)
 
 
 if __name__ == '__main__':
