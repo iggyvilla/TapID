@@ -41,8 +41,7 @@ log.debug('Logging and basic server setup complete! Re-run with -h or --help fla
 
 log.info('Loading plugins...')
 with open('config.json', 'r') as f:
-    config_dict = json.load(f)
-    plugin_dict = utils.load_plugins(f=f, logger=log)
+    plugin_dict, config_dict = utils.load_plugins(f=f, logger=log)
 
 
 def create_connection():

@@ -19,4 +19,4 @@ def load_plugins(f: TextIO, logger) -> Dict[str, Callable]:
         except AttributeError as e:
             logger.critical(f'{e}. Recheck your plug-in setup, make sure it meets the requirements in the wiki.')
 
-    return plugin_dict
+    return plugin_dict, config
