@@ -1,0 +1,27 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+certifi = "==2021.10.8"
+cffi = "==1.15.0"
+charset-normalizer = "==2.0.10"
+click = "==8.0.3"
+cryptography = "==36.0.1"
+idna = "==3.3"
+itsdangerous = "==2.0.1"
+psycopg2 = "==2.9.3"
+pycparser = "==2.21"
+requests = "==2.27.1"
+urllib3 = "==1.26.8"
+Flask = "==2.0.2"
+Jinja2 = "==3.0.3"
+MarkupSafe = "==2.0.1"
+PyJWT = "==2.3.0"
+Werkzeug = "==2.0.2"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"

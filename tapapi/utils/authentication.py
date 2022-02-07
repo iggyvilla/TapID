@@ -76,8 +76,9 @@ def get_public_key_from_uid(uid: str, conn, save_priv_key_on_new_uid=False):
 
     :param uid: The UID of the card (casted to string)
     :param conn: The Psycopg2 connection object
-    :param save_priv_key_on_new_uid: Whether to save the private key to an external table named test_key_pairs
-    :return: An error (check DB configuration), and (uid, public_key) when successful
+    :param save_priv_key_on_new_uid: Whether to save the private key to an external table named test_key_pairs.
+     Could be used when generating card UIDs at first.
+    :return: An error (check DB configuration), and a tuple consisting of (uid, public_key) when successful
     """
 
     try:
@@ -118,8 +119,9 @@ def get_public_key_from_uid(uid: str, conn, save_priv_key_on_new_uid=False):
 def verify_jwt_with_public_key(json_web_token: str, public_key: bytes):
     """
     Decode a JWT with a public key.
+
     :param json_web_token: The JSON Web Token
-    :param public_key:
+    :param public_key: The public key casted to bytes
     :return: Decoded JWT if successful, jwt.exceptions.InvalidSignatureError if not
     """
     _log.info(f'Verifying JWT \"{json_web_token[:12]}...\"')
@@ -134,5 +136,5 @@ if __name__ == '__main__':
                              port="5432",
                              database="tapid")
 
-    # get_public_key_from_uid(_generate_fake_uid(), save_priv_key_on_new_uid=True, conn=_conn)
-    generate_key_pairs(to_database=True, conn=_conn, uid=_generate_fake_uid())
+    get_public_key_from_uid('4B 69 2D 0C', save_priv_key_on_new_uid=True, conn=_conn)
+    # generate_key_pairs(to_database=True, conn=_conn, uid='4B 69 2D 0C')

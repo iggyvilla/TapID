@@ -84,8 +84,11 @@ def route_event():
         # If the plug-in was configured properly, the plugin_dict should receive its run() function
         if event_func:
             log.info(f'Imported {payload_data.event_name}\'s run() function, running it')
+
             resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
+
             log.info(f'\"{payload_data.event_name}\" ran successfully!')
+
             if type(resp) == PluginResponse:
                 log.info(f'Received PluginResponse from \"{payload_data.event_name}\"')
                 return jsonify(resp.payload), resp.response_code
@@ -103,6 +106,11 @@ def route_event():
 
     # Always close the connection to free up resources
     conn.close()
+
+
+@app.route("/heartbeat", methods=["GET"])
+def status():
+    return 200
 
 
 if __name__ == '__main__':
