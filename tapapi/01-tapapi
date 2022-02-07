@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Add this file to the SSH motd directory so the TapAPI logo shows up
+# When SSH-ing into the server
+
 echo " _______                  _____ _____"
 echo "|__   __|           /\   |  __ \_   _|"
 echo "   | | __ _ _ __   /  \  | |__) || |"

@@ -79,16 +79,19 @@ def route_event():
         )
         log.info(f'Successfully authenticated \"{payload_data.uid}\"s JWT!')
 
+        # Now grab the run() function of the event being requested
         event_func = plugin_dict.get(payload_data.event_name, None)
 
-        # If the plug-in was configured properly, the plugin_dict should receive its run() function
+        # If the plug-in was configured properly, the plugin_dict should have the event's run() function
         if event_func:
+            # Run the run() function (duh...)
             log.info(f'Imported {payload_data.event_name}\'s run() function, running it')
 
             resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
 
             log.info(f'\"{payload_data.event_name}\" ran successfully!')
 
+            # It will only accept PluginResponses, try and return something else and it will return a 501
             if type(resp) == PluginResponse:
                 log.info(f'Received PluginResponse from \"{payload_data.event_name}\"')
                 return jsonify(resp.payload), resp.response_code
@@ -96,11 +99,12 @@ def route_event():
                 log.critical('Invalid plug-in return type. TapAPI plug-ins should only return a PluginResponse.')
                 return Response('Invalid plug-in return type.', 501)
         else:
-            log.critical(f'Unknown event name \"{payload_data.event_name}\"!')
-            return Response('Unknown event name. Did you configure the plug-in or Ground Module properly?', 400)
+            # If the plug-in is not in the plugin_dict either it doesn't exist or wasn't setup properly
+            log.critical(f'Unknown event name \"{payload_data.event_name}\"! Did you configure the plug-in or Ground Module properly?')
+            return Response('Unknown event name.', 400)
 
     except jwt.exceptions.InvalidSignatureError:
-        # If the card doesn't decrypt properly, something suspicious is up
+        # If the card doesn't decrypt properly, something is suspicious!
         log.critical(f'Invalid signature detected. Investigate card {payload_data.uid} immediately!')
         abort(Response("Invalid signature. Card UID does not decrypt properly.", 403))
 
@@ -114,6 +118,6 @@ def status():
 
 
 if __name__ == '__main__':
-    log.warning(f'Welcome to TapAPI! Running on port {args.port}, debug level {args.level}')
+    log.info(f'Welcome to TapAPI! Running on port {args.port}, debug level {args.level}')
     # If you ever want to test the server on the same machine, do a requests.put on http://localhost:<port>
     app.run(debug=True, port=args.port)
