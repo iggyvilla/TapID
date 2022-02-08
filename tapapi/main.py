@@ -4,6 +4,7 @@ import logging
 import utils
 import psycopg2
 import jwt.exceptions
+from os import environ
 from datetime import datetime as dt
 from utils.configure_logger import configure_logger
 from utils.configure_argparse import configure_argparse
@@ -92,9 +93,16 @@ def route_event():
             public_key=bytes(public_key, 'utf-8')
         )
         log.info(f'Successfully authenticated \"{payload_data.uid}\"s JWT! Checking validity...')
-        if not utils.is_jwt_valid(jwt_decoded):
+
+        # Check if the JWT is valid
+        if not utils.is_jwt_valid(jwt_decoded=jwt_decoded):
             log.critical(f"Invalid JWT detected from {payload_data.uid}!")
             return Response("Invalid JWT.", 400)
+
+        # Check if the password present in the JWT is correct
+        if jwt_decoded["pass"] != environ.get("TAPID_JWT_PASSWORD", None):
+            log.critical(f"Invalid password detected from {payload_data.uid}!")
+            return Response("Invalid password.", 401)
 
         # Now grab the run() function of the event being requested
         event_func = plugin_dict.get(payload_data.event_name, None)
