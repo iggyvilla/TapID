@@ -7,3 +7,4 @@ from utils.authentication import get_public_key_from_uid, verify_jwt_with_public
 from utils.configure_logger import configure_logger
 from utils.configure_argparse import configure_argparse
 from utils.handle_metrics import handle_metrics
+from utils.is_db_valid import is_db_valid

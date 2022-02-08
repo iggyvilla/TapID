@@ -51,6 +51,11 @@ def create_connection():
                             database="tapid")
 
 
+if not utils.is_db_valid(create_connection()):
+    logging.critical("Database is invalid! Are you sure it's online and has the proper tables?")
+    exit()
+
+
 @app.route('/')
 def home_page():
     payload = {
