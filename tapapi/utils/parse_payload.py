@@ -23,6 +23,7 @@ def parse_payload(payload: dict) -> Union[KeyError, TapAPIRequestPayload]:
     # Read up on list comprehensions, the all() function, and the in keyword
     # Checks if all keys in the tuple are in the payload
     if all(k in payload for k in ("jwt", "uid", "event_name", "event_data")):
-        return TapAPIRequestPayload(payload["jwt"], payload["event_name"], payload["uid"], payload["event_data"])
+        if type(payload["jwt"]) == str and len(payload["uid"]) == 11 and type(payload["event_data"]) == dict:
+            return TapAPIRequestPayload(payload["jwt"], payload["event_name"], payload["uid"], payload["event_data"])
     else:
         return KeyError("Incomplete payload")
