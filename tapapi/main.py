@@ -91,7 +91,10 @@ def route_event():
             json_web_token=payload_data.jwt,
             public_key=bytes(public_key, 'utf-8')
         )
-        log.info(f'Successfully authenticated \"{payload_data.uid}\"s JWT!')
+        log.info(f'Successfully authenticated \"{payload_data.uid}\"s JWT! Checking validity...')
+        if not utils.is_jwt_valid(jwt_decoded):
+            log.critical(f"Invalid JWT detected from {payload_data.uid}!")
+            return Response("Invalid JWT.", 400)
 
         # Now grab the run() function of the event being requested
         event_func = plugin_dict.get(payload_data.event_name, None)

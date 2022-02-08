@@ -8,3 +8,4 @@ from utils.configure_logger import configure_logger
 from utils.configure_argparse import configure_argparse
 from utils.handle_metrics import handle_metrics
 from utils.is_db_valid import is_db_valid
+from utils.is_jwt_valid import is_jwt_valid
