@@ -48,6 +48,7 @@ encoded = jwt.encode({"name": "Jane Doe", "grade": 1, "pass": jwt_password}, byt
 print("\nPayload to send to the server:")
 print(
     {
+        "uid": "00 00 00 00",
         "event_name": event_name,
         "jwt": encoded,
         "event_data": {
