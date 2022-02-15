@@ -22,7 +22,7 @@ def configure_argparse():
                         dest='port',
                         help='Change web port TapAPI will run in',
                         action='store',
-                        required=True,
+                        required=False,
                         type=port_type)
 
     parser.add_argument('-user', '--db-user',
