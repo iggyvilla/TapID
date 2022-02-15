@@ -22,6 +22,7 @@ def configure_argparse():
                         dest='port',
                         help='Change web port TapAPI will run in',
                         action='store',
+                        default=8000,
                         required=False,
                         type=port_type)
 
