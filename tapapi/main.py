@@ -109,10 +109,11 @@ def route_event():
 
         # If the plug-in was configured properly, the plugin_dict should have the event's run() function
         if event_func:
-            # Run the run() function (duh...)
+
             log.info(f'Imported {payload_data.event_name}\'s run() function, running it')
 
-            resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
+            # Run the run() function (duh...) with the password-removed JWT
+            resp = event_func(jwt_decoded=jwt_decoded.pop("pass"), event_data=payload_data.event_data, args=args)
 
             log.info(f'\"{payload_data.event_name}\" ran successfully!')
 
@@ -140,7 +141,7 @@ def route_event():
 @app.route("/metrics", methods=["POST"])
 def status():
     """
-    Handles metrics
+    Handles Ground Module metrics
     """
     payload = request.get_json()
     if ("event_name" in payload.keys()) and ("metric_data" in payload.keys()):
