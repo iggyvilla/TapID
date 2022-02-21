@@ -4,6 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+uflash = "<1.3,>=1.2.4"
+docopt = "<0.7,>=0.6.2"
+pyserial = "<4.0,>=3.5"
+adafruit-ampy = ">=1.0.5,<1.1"
 
 [dev-packages]
 
