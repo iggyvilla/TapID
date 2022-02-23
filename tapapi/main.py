@@ -66,10 +66,15 @@ def home_page():
     return jsonify(payload), 200
 
 
-@app.route("/event", methods=["PUT"])
+@app.route("/event", methods=["PUT", "POST"])
 def route_event():
     payload = request.get_json()
-    log.info(f'Received PUT request with payload, (keys: {", ".join(list(payload.keys()))}).')
+
+    try:
+        log.info(f'Received PUT request with payload, (keys: {", ".join(list(payload.keys()))}).')
+    except AttributeError:
+        return Response("Invalid payload", 401)
+
     try:
         payload_data = utils.parse_payload(payload)
     except KeyError:
@@ -99,10 +104,14 @@ def route_event():
             log.critical(f"Invalid JWT detected from {payload_data.uid}!")
             return Response("Invalid JWT.", 400)
 
+        log.info('JWT is valid.')
+
         # Check if the password present in the JWT is correct
         if jwt_decoded["pass"] != environ.get("TAPID_JWT_PASSWORD", None):
             log.critical(f"Invalid password detected from {payload_data.uid}!")
             return Response("Invalid password.", 401)
+
+        log.info('Correct pass in JWT.')
 
         # Now grab the run() function of the event being requested
         event_func = plugin_dict.get(payload_data.event_name, None)
@@ -161,4 +170,4 @@ def status():
 if __name__ == '__main__':
     log.info(f'Welcome to TapAPI! Running on port {args.port}, debug level {args.level}')
     # If you ever want to test the server on the same machine, do a requests.put on http://localhost:<port>
-    app.run(debug=True, port=args.port)
+    app.run(debug=True, port=args.port, host="0.0.0.0")

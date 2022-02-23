@@ -26,4 +26,4 @@ def parse_payload(payload: dict) -> Union[KeyError, TapAPIRequestPayload]:
         if type(payload["jwt"]) == str and len(payload["uid"]) == 11 and type(payload["event_data"]) == dict:
             return TapAPIRequestPayload(payload["jwt"], payload["event_name"], payload["uid"], payload["event_data"])
     else:
-        return KeyError("Incomplete payload")
+        raise KeyError("Incomplete payload")
