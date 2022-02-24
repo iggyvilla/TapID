@@ -1,3 +1,8 @@
+"""
+NOT MINE!
+From https://github.com/danjperron/micropython-mfrc522 by danjperron
+"""
+
 from machine import Pin, SPI
 from os import uname
 
