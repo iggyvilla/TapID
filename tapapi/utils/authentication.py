@@ -58,7 +58,7 @@ def generate_key_pairs(to_database=False, conn=None, uid=None):
         # We use cursors to send commands to databases through cursor.execute()
         cursor = connection.cursor()
 
-        # ALWAYS use query parameters to prevent SQL injection
+        # ALWAYS use query parameters to prevent SQL injection attacks
         item_tuple = (uid, utf8_pem_private_key, utf8_pem_public_key)
         cursor.execute('insert into test_key_pairs (uid, private_key, public_key) values (%s, %s, %s);', item_tuple)
 
@@ -77,7 +77,7 @@ def get_public_key_from_uid(uid: str, conn, save_priv_key_on_new_uid=False):
     :param uid: The UID of the card (casted to string)
     :param conn: The Psycopg2 connection object
     :param save_priv_key_on_new_uid: Whether to save the private key to an external table named test_key_pairs.
-     Could be used when generating card UIDs at first.
+     Could be used in testing.
     :return: An error (check DB configuration), and a tuple consisting of (uid, public_key) when successful
     """
 

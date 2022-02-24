@@ -1,6 +1,6 @@
 def is_jwt_valid(jwt_decoded: dict):
     """
-    Checks if a JWT is valid
+    Checks if a JWT is valid (has keys name, grade and pass)
 
     :param jwt_decoded: The decoded JWT
     :return: True/False
