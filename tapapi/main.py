@@ -53,7 +53,8 @@ def create_connection():
 
 
 if not utils.is_db_valid(create_connection()):
-    logging.critical("Database is invalid! Are you sure it's online and has the proper tables?")
+    logging.critical("Database is invalid! Are you sure it has the proper tables? Consider running "
+                     "extras/make_databases.py")
     exit()
 
 
@@ -71,13 +72,9 @@ def route_event():
     payload = request.get_json()
 
     try:
-        log.info(f'Received PUT request with payload, (keys: {", ".join(list(payload.keys()))}).')
-    except AttributeError:
-        return Response("Invalid payload", 401)
-
-    try:
+        log.info(f'Received POST/PUT request with payload, (keys: {", ".join(list(payload.keys()))}).')
         payload_data = utils.parse_payload(payload)
-    except KeyError:
+    except (KeyError, AttributeError):
         log.warning('400: Invalid payload.')
         abort(Response("Invalid payload. Follow the format detailed in the GitHub page.", 400))
         return
@@ -92,14 +89,14 @@ def route_event():
     )
 
     try:
-        # Verify the attached JWT with the public key associated with the UID
+        # Verify (decrypt) the attached JWT with the public key associated with the UID
         jwt_decoded = utils.authentication.verify_jwt_with_public_key(
             json_web_token=payload_data.jwt,
             public_key=bytes(public_key, 'utf-8')
         )
         log.info(f'Successfully authenticated \"{payload_data.uid}\"s JWT! Checking validity...')
 
-        # Check if the JWT is valid
+        # Check if the JWT is valid (has the right format)
         if not utils.is_jwt_valid(jwt_decoded=jwt_decoded):
             log.critical(f"Invalid JWT detected from {payload_data.uid}!")
             return Response("Invalid JWT.", 400)
@@ -121,12 +118,12 @@ def route_event():
 
             log.info(f'Imported {payload_data.event_name}\'s run() function, running it')
 
-            # Run the run() function (duh...) with the password-removed JWT
+            # Run the run() function with the password-removed JWT
             resp = event_func(jwt_decoded=jwt_decoded.pop("pass"), event_data=payload_data.event_data, args=args)
 
             log.info(f'\"{payload_data.event_name}\" ran successfully!')
 
-            # It will only accept PluginResponses, try and return something else and it will return a 501
+            # It will only accept PluginResponses. If you try and return something else it will return a 501.
             if type(resp) == PluginResponse:
                 log.info(f'Received PluginResponse from \"{payload_data.event_name}\"')
                 return jsonify(resp.payload), resp.response_code
@@ -135,7 +132,8 @@ def route_event():
                 return Response('Invalid plug-in return type.', 501)
         else:
             # If the plug-in is not in the plugin_dict either it doesn't exist or wasn't setup properly
-            log.critical(f'Unknown event name \"{payload_data.event_name}\"! Did you configure the plug-in or Ground Module properly?')
+            log.critical(f'Unknown event name \"{payload_data.event_name}\"! Plug-in doesn\'t exist or improper '
+                         f'configuration of the event_name/Ground Module.')
             return Response('Unknown event name.', 400)
 
     except jwt.exceptions.InvalidSignatureError:
@@ -169,5 +167,6 @@ def status():
 
 if __name__ == '__main__':
     log.info(f'Welcome to TapAPI! Running on port {args.port}, debug level {args.level}')
-    # If you ever want to test the server on the same machine, do a requests.put on http://localhost:<port>
+    # If you ever want to test the server on the same machine, do a requests.put/post on http://localhost:<port>
+    # The host="0.0.0.0" allows external connections to the server
     app.run(debug=True, port=args.port, host="0.0.0.0")
