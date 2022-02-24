@@ -119,7 +119,8 @@ def route_event():
             log.info(f'Imported {payload_data.event_name}\'s run() function, running it')
 
             # Run the run() function with the password-removed JWT
-            resp = event_func(jwt_decoded=jwt_decoded.pop("pass"), event_data=payload_data.event_data, args=args)
+            jwt_decoded.pop("pass")
+            resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
 
             log.info(f'\"{payload_data.event_name}\" ran successfully!')
 
