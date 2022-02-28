@@ -1,21 +1,34 @@
 import ujson
+from sys import exit
 from machine import UART
+
+
+def writable_rfid_blocks():
+    return [z for z in range(1, 64) if (z % 4) != 3]
 
 
 def parse_http_payload(raw_payload: str) -> dict:
     """Parses raw HTTP payload from the ESP8266 into an organized dictionary"""
-    raw_payload = raw_payload.replace("\r", "")
-    split = raw_payload[raw_payload.find("SEND OK") + len("SEND OK") + 1:raw_payload.find("CLOSED")].split("\n\n")
-    _split = [x.split(": ") for x in split[0].split("\n") if x.split(": ")[0] != '']
-    _response_code = _split[0][0].split(" ")[1]
-    _final = {key: value for key, value in _split[1:]}
-    _final["response_code"] = _response_code
-    _final["json"] = ujson.loads(split[1])
-    return _final
+    print(raw_payload)
+    try:
+        raw_payload = raw_payload.replace("\r", "")
+        split = raw_payload[raw_payload.find("SEND OK") + len("SEND OK") + 1:raw_payload.find("CLOSED")].split("\n\n")
+        _split = [x.split(": ") for x in split[0].split("\n") if x.split(": ")[0] != '']
+        _response_code = _split[0][0].split(" ")[1]
+        _final = {key: value for key, value in _split[1:]}
+        _final["response_code"] = _response_code
+        _final["json"] = ujson.loads(split[1])
+        return _final
+    except IndexError:
+        exit()
 
 
 def parse_at_response(resp: str):
     return resp.replace("\r", "").split("\n\n")[1]
+
+
+def parse_ip_response(resp: str):
+    return resp.split("\r\n")[1].split(",")[1][0:-1]
 
 
 def jwt_to_rfid_array(filename: str):
@@ -81,6 +94,14 @@ class ESP8266:
     MODE_SOFTAP_STATION = 3
 
     def __init__(self, uart: UART, tx_pin, rx_pin):
+        """
+        Class that handles communication with an ESP8266-01E module
+        Uses AT commands (see https://docs.espressif.com/projects/esp-at/en/latest/AT_Command_Set/index.html)
+
+        :param uart: Pi Pico UART
+        :param tx_pin: TX pin used
+        :param rx_pin: RX pin used
+        """
         self.uart = uart
         self.tx_pin = tx_pin
         self.rx_pin = rx_pin
@@ -151,7 +172,7 @@ class ESP8266:
         """
         return self.send(f'AT+CIPSTART="{type}","{ip}",{port}', timeout=timeout)
 
-    def get(self, ip: str, route: str, timeout=1000):
+    def get(self, ip: str, route: str):
         """
         Do an HTTP GET request
 
@@ -159,10 +180,11 @@ class ESP8266:
         :param route: Where the request will happen (ex. if you want 127.0.0.1/home, put "/home")
         :return:
         """
-        cmd = f"GET {route} HTTP/1.1\r\nHost: {ip}\r\n\r\n"
+        cmd = f"GET {route} HTTP/1.0\r\nHost: {ip}\r\n\r\n"
         self.send(f'AT+CIPSEND=' + str(len(cmd) + cmd.count("\r\n") * 4))
         self.change_uart_timeout(500)
         self.uart.write(cmd + "\r\n")
+
         while True:
             self.uart.write("AT\r\n")
             _resp = self.uart.read()
@@ -176,7 +198,7 @@ class ESP8266:
 
                 return Response(body=body, headers=parsed)
 
-    def post(self, ip: str, route: str, payload: dict, timeout=1000) -> Response:
+    def post(self, ip: str, route: str, payload: dict) -> Response:
         """
         Do an HTTP POST request
 
@@ -187,19 +209,24 @@ class ESP8266:
         :return: Response
         """
         json_str = ujson.dumps(payload)
-        cmd = f"POST {route} HTTP/1.1\r\nHost: {ip}\r\nContent-Type: application/json\r\nContent-Length: {len(json_str)}\r\n\r\n{json_str}\r\n"
-        self.send(f'AT+CIPSEND=' + str(len(cmd) + cmd.count("\r\n")*4))
-        self.change_uart_timeout(500)
+        cmd = f"POST {route} HTTP/1.0\r\nHost: {ip}\r\nContent-Type: application/json\r\nContent-Length: {len(json_str)}\r\n\r\n{json_str}\r\n"
+        self.send(f'AT+CIPSEND=' + str(len(cmd) + cmd.count("\r\n")*4), timeout=500)
+        self.change_uart_timeout(350)
         self.uart.write(cmd + "\r\n")
+
         while True:
             self.uart.write("AT\r\n")
-            _resp = self.uart.read()
+            _resp = self.uart.read(1)
 
             if _resp is None:
                 continue
             else:
+                _resp = self.uart.read()
                 decode = _resp.decode()
+                while "CLOSED" not in decode:
+                    _resp = self.uart.read()
+                    decode = _resp.decode()
                 parsed = parse_http_payload(decode[decode.find("+IPD"):])
                 body = parsed.pop('json')
-
-                return Response(body=body, headers=parsed)
+                resp = Response(body=body, headers=parsed)
+                return resp

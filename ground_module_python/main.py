@@ -1,15 +1,9 @@
 from machine import I2C, Pin, UART
-from utils import parse_http_payload, parse_at_response, jwt_to_rfid_array, formatted_uid, ESP8266
+from utils import parse_at_response, jwt_to_rfid_array, formatted_uid, ESP8266, writable_rfid_blocks, parse_ip_response
 import utime
 from sys import exit
-import ujson
 from mfrc522 import MFRC522
 from pico_i2c_lcd import I2cLcd
-
-
-def writable_rfid_blocks():
-    return [z for z in range(1, 64) if (z % 4) != 3]
-
 
 # To keep track of previous RFID card
 previous_card = []
@@ -51,7 +45,6 @@ def card_on_sensor_msg():
 
 
 # Test AT startup
-# esp8266_send('AT')
 if esp8266.startup() is None:
     print("ESP8266 not setup properly")
     exit()
@@ -71,11 +64,16 @@ clear_loading_screen(3)
 # Connect to AP
 esp8266.connect_to_wifi("Akatsuki Hideout", "8prongedseal", timeout=4000)
 
-esp8266.get_local_ip_address()
+clear_loading_screen(4)
+
+resp = esp8266.get_local_ip_address()
+module_ip = parse_ip_response(resp)
+
+clear_loading_screen(8)
 
 esp8266.set_multiple_connections(False)
 
-clear_loading_screen(6)
+clear_loading_screen(10)
 
 conn_resp = esp8266.establish_connection("TCP", SERVER_IP, SERVER_PORT)
 
@@ -87,16 +85,9 @@ if parse_at_response(conn_resp) == "ERROR\nCLOSED\n":
     lcd.putstr("TapID server.")
     exit()
 
-# http_cmd = f"GET / HTTP/1.1\r\nHost: {SERVER_IP}\r\n\r\n"
-
-# +12 because each \r\n count as 1 character
-# esp8266_send(f'AT+CIPSEND={len(http_cmd) + 12}', timeout=1000)
-# resp = esp8266_send(http_cmd, timeout=500)
 payload = esp8266.get(SERVER_IP, "/")
 
 clear_loading_screen(12)
-
-utime.sleep(5)
 
 lcd.clear()
 lcd.move_to(0, 0)
@@ -128,8 +119,7 @@ while True:
             lcd.move_to(0, 0)
             lcd.putstr("Card detected")
 
-            print(
-                f"Card detected (uid={reader.tohexstring(uid)})")
+            print(f"Card detected (uid={reader.tohexstring(uid)})")
 
             previous_card = uid
 
@@ -191,6 +181,8 @@ while True:
                             jwt_buf.append(chr(char))
                     else:
                         print("Error reading RFID card")
+                else:
+                    break
 
                 if end_of_text:
                     break
@@ -207,7 +199,7 @@ while True:
             print(f"Read a JWT from RFID.")
 
             lcd.move_to(0, 1)
-            lcd.putstr("Card read.")
+            lcd.putstr("Card read!")
 
             payload = {
                 "jwt": "".join(jwt_buf),
@@ -223,7 +215,10 @@ while True:
 
             esp8266.establish_connection(type="TCP", ip=SERVER_IP, port=SERVER_PORT)
 
-            resp = esp8266.post(ip=SERVER_IP, route="/event", payload=payload, timeout=1500)
+            lcd.move_to(0, 1)
+            lcd.putstr("Authenticating")
+
+            resp = esp8266.post(ip=SERVER_IP, route="/event", payload=payload)
             print("RECV:")
             print(resp)
 
