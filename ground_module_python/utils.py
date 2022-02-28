@@ -86,6 +86,8 @@ class Response:
 
 
 # TX = 12, RX = 13
+# Wrote this one myself
+# TL;DR, you communicate with the ESP-01 through UART and by sending AT commands (see link in constructor)
 class ESP8266:
 
     MODE_NULL = 0
