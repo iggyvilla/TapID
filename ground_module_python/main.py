@@ -9,6 +9,8 @@ from pico_i2c_lcd import I2cLcd
 previous_card = []
 
 # Toggle between read/write modes
+# If write is True, then it will write the JWT in "jwts.txt"
+# The code can be modifiable to instead write JWTS in an array one by one
 WRITE = False
 
 # MFRC522 reader class instantiation
@@ -24,11 +26,13 @@ uart1 = UART(0, tx=Pin(12), rx=Pin(13), baudrate=115200, timeout=5000)
 esp8266 = ESP8266(uart1, tx_pin=Pin(12), rx_pin=Pin(13))
 print(uart1)
 
+# TapID IP and port
 SERVER_IP = "192.168.100.7"
 SERVER_PORT = 8000
 
 
 def clear_loading_screen(percent_done):
+    """Function to easily set the loading screen without repeating code"""
     lcd.clear()
     lcd.move_to(0, 0)
     lcd.putstr("TapID loading...")
@@ -38,19 +42,21 @@ def clear_loading_screen(percent_done):
 
 
 def card_on_sensor_msg():
+    """Function to easily put "enter card on sensor" message"""
     lcd.clear()
     lcd.putstr("Put card on")
     lcd.move_to(0, 1)
     lcd.putstr("sensor.")
 
 
-# Test AT startup
+# Test AT startup and see if ESP-01 is wired correctly
 if esp8266.startup() is None:
     print("ESP8266 not setup properly")
     exit()
 
 # esp8266_send('AT+GMR')      # Check version information
 # esp8266_send('AT+CWMODE?')  # Query the Wi-Fi mode
+# esp8266_send('AT+CWLAP', timeout=10000)
 
 clear_loading_screen(2)
 
@@ -59,24 +65,26 @@ esp8266.wifi_mode(ESP8266.MODE_STATION)
 
 clear_loading_screen(3)
 
-# esp8266_send('AT+CWLAP', timeout=10000)
-
-# Connect to AP
+# Connect to an AP
 esp8266.connect_to_wifi("Akatsuki Hideout", "8prongedseal", timeout=4000)
 
 clear_loading_screen(4)
 
+# Get the modules IP address for metric use
 resp = esp8266.get_local_ip_address()
 module_ip = parse_ip_response(resp)
 
 clear_loading_screen(8)
 
+# Make sure we only connect to one network (the ESP-01 can connect to multiple networks)
 esp8266.set_multiple_connections(False)
 
 clear_loading_screen(10)
 
+# Establish a TCP connection to the HTTP server
 conn_resp = esp8266.establish_connection("TCP", SERVER_IP, SERVER_PORT)
 
+# See if server is offline
 if parse_at_response(conn_resp) == "ERROR\nCLOSED\n":
     lcd.clear()
     lcd.move_to(0, 0)
@@ -85,6 +93,7 @@ if parse_at_response(conn_resp) == "ERROR\nCLOSED\n":
     lcd.putstr("TapID server.")
     exit()
 
+# Make a GET request to TapAPI to see if the server is responsive
 payload = esp8266.get(SERVER_IP, "/")
 
 clear_loading_screen(12)
@@ -97,6 +106,7 @@ lcd.putstr(str(payload.body['api_version']))
 
 utime.sleep(1)
 
+# Message to show if the module is in WRITE mode
 if WRITE:
     print("Ground Module in write mode. Writing JWT from jwts.txt")
 
@@ -105,6 +115,8 @@ print("SYSTEM INITIALIZATION COMPLETE\n\n")
 card_on_sensor_msg()
 
 while True:
+    # Initialize the MFRC522 reader
+    # Taken from example code from danjperron/micropython-mfrc522/Pico_examples/Pico_read.py
     reader.init()
     (stat, tag_type) = reader.request(reader.REQIDL)
 
@@ -115,6 +127,7 @@ while True:
             continue
 
         if stat == reader.OK:
+            # Display that a card was detected
             lcd.clear()
             lcd.move_to(0, 0)
             lcd.putstr("Card detected")
@@ -128,7 +141,7 @@ while True:
             # In deployment, write the key in the trailer sectors (where sector_n%4==3; 1,3,5,7...)
             defaultKey = [255, 255, 255, 255, 255, 255]
 
-            # Function to read entire card
+            # Function to read entire card, remove comment if needed
             # reader.MFRC522_DumpClassic1K(uid, Start=0, End=64, keyA=defaultKey)
 
             # If you want to use the ground module to write JWTs to cards
@@ -161,9 +174,13 @@ while True:
 
                 exit()
 
+            # Buffer for storing card information
             jwt_buf = []
+
+            # Boolean to keep track if entire JWT was read
             read_complete = False
 
+            # writable_rfid_blocks() are all blocks minus the trailer sectors)
             for block_num in writable_rfid_blocks():
                 status = reader.auth(reader.AUTHENT1A, block_num, defaultKey, uid)
                 end_of_text = False
@@ -173,7 +190,7 @@ while True:
 
                     if status == reader.OK:
                         for char in read_block:
-                            # If we reach the end of text character
+                            # If we reach the end of text character (3 in decimal)
                             if char == 3:
                                 end_of_text = True
                                 read_complete = True
@@ -187,11 +204,14 @@ while True:
                 if end_of_text:
                     break
 
+            # If the end of text character wasn't read
             if not read_complete:
                 print("Card not read completely, ignoring.")
                 card_on_sensor_msg()
                 continue
 
+            # JWTs have two periods. This is the only not-so-resource-intensive way to
+            # Check if there is a valid JWT
             if jwt_buf.count('.') != 2:
                 print('Not a JWT. Ignoring card.')
                 continue
@@ -201,6 +221,7 @@ while True:
             lcd.move_to(0, 1)
             lcd.putstr("Card read!")
 
+            # A valid TapAPI payload
             payload = {
                 "jwt": "".join(jwt_buf),
                 "uid": formatted_uid(uid),
@@ -213,11 +234,13 @@ while True:
 
             print(payload)
 
+            # Establish a TCP HTTP connection to the server ip and port
             esp8266.establish_connection(type="TCP", ip=SERVER_IP, port=SERVER_PORT)
 
             lcd.move_to(0, 1)
             lcd.putstr("Authenticating")
 
+            # Perform the post request for authentication
             resp = esp8266.post(ip=SERVER_IP, route="/event", payload=payload)
             print("RECV:")
             print(resp)
