@@ -120,7 +120,7 @@ def route_event():
 
             # Run the run() function with the password-removed JWT
             jwt_decoded.pop("pass")
-            resp = event_func(jwt_decoded=jwt_decoded, event_data=payload_data.event_data, args=args)
+            resp = event_func(jwt_decoded=jwt_decoded, payload_data=payload_data, args=args, conn=create_connection())
 
             log.info(f'\"{payload_data.event_name}\" ran successfully!')
 
