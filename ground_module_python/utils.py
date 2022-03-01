@@ -85,7 +85,11 @@ class Response:
         return f"Response(\n    headers={self.headers}\n    body={self.body}\n)"
 
 
-# TX = 12, RX = 13
+# Some other useful AT commands
+# esp8266.send('AT+GMR')      # Check version information
+# esp8266.send('AT+CWMODE?')  # Query the Wi-Fi mode
+# esp8266.send('AT+CWLAP', timeout=10000) # List APs
+# TX = Pin(12), RX = Pin(13)
 # Wrote this one myself
 # TL;DR, you communicate with the ESP-01 through UART and by sending AT commands (see link in constructor)
 class ESP8266:
@@ -97,7 +101,7 @@ class ESP8266:
 
     def __init__(self, uart: UART, tx_pin, rx_pin):
         """
-        Class that handles communication with an ESP8266-01E module
+        Class that handles communication with an ESP-01E module
         Uses AT commands (see https://docs.espressif.com/projects/esp-at/en/latest/AT_Command_Set/index.html)
 
         :param uart: Pi Pico UART

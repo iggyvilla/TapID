@@ -34,6 +34,7 @@ SERVER_PORT = 8000
 def clear_loading_screen(percent_done):
     """Function to easily set the loading screen without repeating code"""
     lcd.clear()
+    # Think of move_to like moving where the type cursor is. That's exactly what it's doing!
     lcd.move_to(0, 0)
     lcd.putstr("TapID loading...")
     lcd.move_to(0, 1)
@@ -53,10 +54,6 @@ def card_on_sensor_msg():
 if esp8266.startup() is None:
     print("ESP8266 not setup properly")
     exit()
-
-# esp8266_send('AT+GMR')      # Check version information
-# esp8266_send('AT+CWMODE?')  # Query the Wi-Fi mode
-# esp8266_send('AT+CWLAP', timeout=10000)
 
 clear_loading_screen(2)
 
@@ -245,7 +242,9 @@ while True:
             print("RECV:")
             print(resp)
 
+            # If everything went well (200 OK)
             if resp.response_code == 200:
+                # Display that everything went well to the user, you can do anything in this if statement
                 lcd.clear()
                 lcd.move_to(0, 0)
                 lcd.putstr(f"Hello, G{resp.body['jwt_decoded']['grade']}")
