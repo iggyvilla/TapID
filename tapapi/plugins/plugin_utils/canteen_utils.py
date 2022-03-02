@@ -7,6 +7,7 @@ def get_balance_of_uid(conn, uid: str) -> int:
             curs.execute("select balance from canteen_chits where uid = %s;", (uid,))
             row = curs.fetchone()
 
+            # If the card still hasn't been registered with a balance, add it to the database
             if not row:
                 curs.execute("insert into canteen_chits (uid, balance) values (%s, 0)", (uid,))
                 curs.execute("select balance from canteen_chits where uid = %s;", (uid,))
@@ -15,11 +16,11 @@ def get_balance_of_uid(conn, uid: str) -> int:
             return row[0]
 
 
-def update_balance_of_uid(conn, uid, new_bal) -> int:
+def update_balance_of_uid(conn, uid, new_bal: int) -> int:
     with conn:
         with conn.cursor() as curs:
+            # Update the balance with the new_bal
             curs.execute("update canteen_chits set balance = %s where uid = %s;", (new_bal, uid))
-
             return True
 
 

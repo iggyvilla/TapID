@@ -11,6 +11,7 @@ def run(jwt_decoded: dict, payload_data: TapAPIRequestPayload, args, conn) -> Pl
 
     old_bal = canteen_utils.get_balance_of_uid(conn, uid)
 
+    # If the action (subtract or add) is not in event_data
     if "action" not in event_data:
         return PluginResponse(400, payload={"msg": "Invalid dict"})
 
