@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Bootstrap CSS -->
+<!-- Imagine not writing the CSS and instead using classes! -->
+<!-- I extremely dislike CSS!! Just my personal opinion! -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+<head>
+    <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1">
+    <title>Library Book Tracker</title>
+
+    <style>
+        @media screen and (min-width: 1000px) {
+            #main {
+                width: 50% !important;
+                margin: 0 auto !important;
+            }
+        }
+
+        #main {
+            margin: 15px;
+        }
+
+        .navbar-brand {
+            padding: 0px;
+        }
+
+        .navbar-brand>img {
+            height: 100%;
+            padding: 15px;
+            width: auto;
+        }
+
+        small {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="text-center">
+    <nav class="navbar navbar-inverse navbar-static-top">
+        <div class="navbar-header">
+            <a class="navbar-brand" href={{ url_for('library_home_page') }}>
+                <img src="/static/tapid_logo_white.png" height="54">
+            </a>
+        </div>
+    </nav>
+
+    <div id="main">
+        <h1>Library Tracker</h1>
+        <h5>See books you have borrowed in the library based on your card UID.</h5>
+        <form action={{ url_for('library_uid') }}>
+            <label for="uid">Enter your UID:</label>
+            <input class="form-control" type="uid" name="uid" value="" style="margin-top: 10px; margin-bottom: 10px;" autocomplete="off" required>
+            <div id="uidHelpBlock" class="form-text">
+                Your UID is composed of four <strong>(number/letter)(number/letter)</strong> combinations with spaces in between. <br>
+                <em>ex.</em> 04 3A 2B 3C
+            </div>
+            <br>
+            <input class="btn btn-default" type="submit" value="See your books!">
+        </form>
+        {%  if error %}
+            <br>
+            <div class="text-danger">
+            Invalid UID.
+            </div>
+        {%  endif %}
+    </div>
+</div>
+
+<small>Powered with <3 by <a href="https://github.com/iggyvilla/TapID">TapID</a> (Enrique Villa, 2022).</small>
+
+</body>
+</html>

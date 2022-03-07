@@ -49,4 +49,27 @@ with conn:
             );
         """)
 
+        curs.execute("""
+            create table books_borrowed (
+                borrow_id serial primary key,
+                book_id int references book_ids(book_id) not null,
+                due_on date not null
+            );
+        """)
+
+        curs.execute("""
+            create table book_ids (
+                book_id serial primary key,
+                book_name text
+            );
+        """)
+
+        curs.execute("""
+            create table canteen_chits (
+                transaction_number serial primary key,
+                uid varchar(11),
+                balance integer
+            );
+        """)
+
 print("Made database with no errors!")

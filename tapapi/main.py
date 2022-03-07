@@ -1,15 +1,18 @@
 # Made by Enrique Villa, Grade 12 Da Vinci, SY 2022-2023
 
+import re
 import logging
 import utils
 import psycopg2
+from datetime import datetime
 import jwt.exceptions
 from os import environ
 from datetime import datetime as dt
+from plugins.plugin_utils.library_utils import get_books_from_uid
 from utils.configure_logger import configure_logger
 from utils.configure_argparse import configure_argparse
 from utils.responses.PluginResponse import PluginResponse
-from flask import Flask, Response, request, abort, jsonify
+from flask import Flask, Response, request, abort, jsonify, render_template
 
 # Set up the Flask server
 # A good Flask tutorial: https://www.youtube.com/watch?v=Z1RJmh_OqeA&t=2358s
@@ -84,8 +87,7 @@ def route_event():
     # If the payload is in the correct format, get the UID's public key
     public_key = utils.authentication.get_public_key_from_uid(
         uid=payload_data.uid,
-        conn=conn,
-        save_priv_key_on_new_uid=True
+        conn=conn
     )
 
     try:
@@ -164,6 +166,22 @@ def status():
         logging.warning("Received invalid metrics payload")
         return Response('Invalid payload', 400)
     return Response('OK', 200)
+
+
+@app.route("/library")
+def library_home_page():
+    return render_template("library_tracker.html")
+
+
+@app.route("/library/uid", methods=["GET", "POST"])
+def library_uid():
+    log.info("Library UID request received.")
+    result = re.fullmatch(r"([a-zA-Z0-9]{2} ?){4}", request.args['uid'])
+    if result:
+        books = get_books_from_uid(request.args['uid'].upper(), conn=create_connection())
+        return render_template("library_tracker_success.html", books=books, now=datetime.now())
+    else:
+        return render_template("library_tracker.html", error=True)
 
 
 if __name__ == '__main__':

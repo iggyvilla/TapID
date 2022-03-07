@@ -1,7 +1,8 @@
 {
   "plugins": [
     "plugins.example",
-    "plugins.canteen"
+    "plugins.canteen",
+    "plugins.books_library"
   ],
   "version": 1.1
 }
