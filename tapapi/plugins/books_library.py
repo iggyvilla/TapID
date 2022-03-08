@@ -45,7 +45,11 @@ if not creds or not creds.valid:
 
 
 def run(jwt_decoded: dict, payload_data: TapAPIRequestPayload, args, conn) -> PluginResponse:
+
+    # Extract the payload data
     data = payload_data.event_data
+
+    # Insert an entry into the database
     try:
         db_entry = library_utils.borrow_book(
             uid=payload_data.uid,
@@ -58,26 +62,31 @@ def run(jwt_decoded: dict, payload_data: TapAPIRequestPayload, args, conn) -> Pl
     except psycopg2.errors.Error:
         return PluginResponse(response_code=500, payload={"msg": "internal server error"})
 
+    # If the client requests you save to Google Docs
     if data['save_to_google_docs']:
-        service = build('sheets', 'v4', credentials=creds)
+        try:
+            # Build the Google service with your credentials
+            service = build('sheets', 'v4', credentials=creds)
 
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-        #               Borrow ID    Book Title   Student Name         Due When
-        sheets_entry = (db_entry[0], db_entry[1], jwt_decoded["name"], db_entry[2].strftime("%A %b %d, %Y"))
-        result = sheet.values().append(
-            spreadsheetId=SPREADSHEET_ID,
-            range=RANGE_NAME,
-            valueInputOption="USER_ENTERED",
-            insertDataOption="INSERT_ROWS",
-            body={
-                "values": [sheets_entry]
-            }
-        ).execute()
+            # Call the Sheets API
+            sheet = service.spreadsheets()
+            #               Borrow ID    Book Title   Student Name         Due When
+            sheets_entry = (db_entry[0], db_entry[1], jwt_decoded["name"], db_entry[2].strftime("%A %b %d, %Y"))
+            result = sheet.values().append(
+                spreadsheetId=SPREADSHEET_ID,
+                range=RANGE_NAME,
+                valueInputOption="USER_ENTERED",
+                insertDataOption="INSERT_ROWS",
+                body={
+                    "values": [sheets_entry]
+                }
+            ).execute()
 
-        if result:
-            return PluginResponse(response_code=200, payload={"google_resp": result, "entry": sheets_entry})
-        else:
-            return PluginResponse(response_code=500, payload={"msg": "google api error"})
+            if result:
+                return PluginResponse(response_code=200, payload={"google_resp": result, "entry": sheets_entry})
+            else:
+                return PluginResponse(response_code=500, payload={"msg": "google api error"})
+        except HttpError:
+            return PluginResponse(response_code=500, payload={"msg": "saved to local db but cant connect to google api"})
 
     return PluginResponse(response_code=200, payload={"msg": "ok"})

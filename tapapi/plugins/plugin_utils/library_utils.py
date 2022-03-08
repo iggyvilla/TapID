@@ -7,6 +7,8 @@ def get_books_from_uid(uid: str, conn):
     """
     with conn:
         with conn.cursor() as curs:
+            # This one's a good example of when it is most critical to use template strings for the SQL query
+            #  because users input data, one could do an SQL injection attack if you did not use the %s
             curs.execute("select borrow_id, b.book_name, due_on from books_borrowed p inner join book_ids b on b.book_id = p.book_id AND p.uid = %s;", (uid,))
             return curs.fetchall()
 

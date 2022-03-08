@@ -1,13 +1,12 @@
+"""
+LIBRARY MODULE CODE
+"""
 from machine import I2C, Pin, UART
 from utils import parse_at_response, jwt_to_rfid_array, formatted_uid, ESP8266, writable_rfid_blocks, parse_ip_response
 import utime
 from sys import exit
 from mfrc522 import MFRC522
 from pico_i2c_lcd import I2cLcd
-
-"""
-LIBRARY 
-"""
 
 # To keep track of previous RFID card
 previous_card = []
