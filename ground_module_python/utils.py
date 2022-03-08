@@ -20,7 +20,7 @@ def parse_http_payload(raw_payload: str) -> dict:
         _final["json"] = ujson.loads(split[1])
         return _final
     except IndexError:
-        exit()
+        return None
 
 
 def parse_at_response(resp: str):
@@ -204,7 +204,7 @@ class ESP8266:
 
                 return Response(body=body, headers=parsed)
 
-    def post(self, ip: str, route: str, payload: dict) -> Response:
+    def post(self, ip: str, route: str, payload: dict):
         """
         Do an HTTP POST request
 
@@ -229,10 +229,20 @@ class ESP8266:
             else:
                 _resp = self.uart.read()
                 decode = _resp.decode()
+
+                # If the response isn't complete
                 while "CLOSED" not in decode:
                     _resp = self.uart.read()
-                    decode = _resp.decode()
+                    try:
+                        decode = _resp.decode()
+                    except AttributeError:
+                        continue
+
                 parsed = parse_http_payload(decode[decode.find("+IPD"):])
+
+                if not parsed:
+                    return None
+
                 body = parsed.pop('json')
                 resp = Response(body=body, headers=parsed)
                 return resp

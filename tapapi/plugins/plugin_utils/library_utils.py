@@ -22,7 +22,7 @@ def borrow_book(uid: str, book_id: int, due_on: int, conn):
                 (book_id, datetime.now() + timedelta(days=due_on), uid)
             )
 
-            curs.execute("select book_id from books_borrowed where uid = %s", (uid,))
+            curs.execute("select borrow_id, b.book_name, due_on from books_borrowed p inner join book_ids b on b.book_id = p.book_id AND p.uid = %s;", (uid,))
 
             # Select the just added row so we can update the google sheets file with a book number
             return curs.fetchone()

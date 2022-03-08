@@ -4,42 +4,13 @@ import utime
 from sys import exit
 from mfrc522 import MFRC522
 from pico_i2c_lcd import I2cLcd
-import utime
 
-row_list = [Pin(x, Pin.OUT) for x in [8, 9, 10, 11]]
-
-for pin in row_list:
-    pin.value(1)
-
-col_list = [Pin(x, Pin.IN, Pin.PULL_UP) for x in [14, 15, 16, 17]]
-
-key_map = [
-    ["1", "2", "3", "A"],
-    ["4", "5", "6", "B"],
-    ["7", "8", "9", "C"],
-    ["*", "0", "#", "D"]
-]
-
-
-def read_keypad():
-    # From https://peppe8o.com/use-matrix-keypad-with-raspberry-pi-pico-to-get-user-codes-input/
-    for pin in row_list:
-        pin.value(0)
-        res = [pin.value() for pin in col_list]
-
-        if min(res) == 0:
-            key = key_map[row_list.index(pin)][res.index(0)]
-            pin.value(1)
-            return key
-        pin.value(1)
+"""
+LIBRARY 
+"""
 
 # To keep track of previous RFID card
 previous_card = []
-
-# Toggle between read/write modes
-# If write is True, then it will write the JWT in "jwts.txt"
-# The code can be modifiable to instead write JWTS in an array one by one
-WRITE = False
 
 # MFRC522 reader class instantiation
 reader = MFRC522(spi_id=0, sck=2, miso=4, mosi=3, cs=1, rst=0)
@@ -54,7 +25,7 @@ uart1 = UART(0, tx=Pin(12), rx=Pin(13), baudrate=115200, timeout=5000)
 esp8266 = ESP8266(uart1, tx_pin=Pin(12), rx_pin=Pin(13))
 print(uart1)
 
-# TapID IP and port
+# TapAPI IP and port
 SERVER_IP = "192.168.100.7"
 SERVER_PORT = 8000
 
@@ -78,10 +49,6 @@ def card_on_sensor_msg():
     lcd.putstr("sensor.")
 
 
-def enter_bal_msg(action):
-    lcd.move_to(0, 0)
-    lcd.putstr(f"Enter amount ({'-' if action == 'subtract' else '+'})")
-
 # Test AT startup and see if ESP-01 is wired correctly
 if esp8266.startup() is None:
     print("ESP8266 not setup properly")
@@ -95,7 +62,7 @@ esp8266.wifi_mode(ESP8266.MODE_STATION)
 clear_loading_screen(3)
 
 # Connect to an AP
-esp8266.connect_to_wifi("Akatsuki Hideout", "8prongedseal", timeout=4000)
+esp8266.connect_to_wifi("Akatsuki Hideout", "8prongedseal", timeout=6000)
 
 clear_loading_screen(4)
 
@@ -134,10 +101,6 @@ lcd.move_to(0, 1)
 lcd.putstr(str(payload.body['api_version']))
 
 utime.sleep(1)
-
-# Message to show if the module is in WRITE mode
-if WRITE:
-    print("Ground Module in write mode. Writing JWT from jwts.txt")
 
 print("SYSTEM INITIALIZATION COMPLETE\n\n")
 
@@ -220,40 +183,15 @@ while True:
             lcd.move_to(0, 1)
             lcd.putstr("Card read!")
 
-            action = "subtract"
-            amount = 0
-
-            lcd.clear()
-            lcd.move_to(0, 0)
-            enter_bal_msg(action)
-
-            while True:
-                lcd.move_to(0, 1)
-                lcd.putstr(str(amount))
-
-                if key := read_keypad():
-                    print(key)
-                    if key.isdigit():
-                        amount = (amount * 10) + int(key)
-                    elif key == "*":
-                        lcd.clear()
-                        enter_bal_msg(action)
-                        amount = 0
-                    elif key == "D":
-                        break
-                    elif key == "A":
-                        action = "subtract" if action == "add" else "add"
-                        enter_bal_msg(action)
-                    utime.sleep(0.3)
-
             # A valid TapAPI payload
             payload = {
                 "jwt": "".join(jwt_buf),
                 "uid": formatted_uid(uid),
-                "event_name": "canteen_event",
+                "event_name": "borrow_book",
                 "event_data": {
-                    "action": action,
-                    "bal": amount
+                    "book_id": 1,
+                    "due_on": 7,
+                    "save_to_google_docs": True
                 }
             }
 
@@ -270,14 +208,21 @@ while True:
             print("RECV:")
             print(resp)
 
+            if not resp:
+                lcd.clear()
+                lcd.move_to(0, 0)
+                lcd.putstr("Error. Try again.")
+                utime.sleep(2)
+                continue
+
             # If everything went well (200 OK)
             if resp.response_code == 200:
                 # Display that everything went well to the user, you can do anything in this if statement
                 lcd.clear()
                 lcd.move_to(0, 0)
-                lcd.putstr("Success!")
+                lcd.putstr(f"Borrowed")
                 lcd.move_to(0, 1)
-                lcd.putstr(f"New: {resp.body['new_bal']}")
+                lcd.putstr(f"{resp.body['entry'][1]}")
 
             print("Done processing.\n")
         else:

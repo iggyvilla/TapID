@@ -4,6 +4,34 @@ import utime
 from sys import exit
 from mfrc522 import MFRC522
 from pico_i2c_lcd import I2cLcd
+import utime
+
+row_list = [Pin(x, Pin.OUT) for x in [8, 9, 10, 11]]
+
+for pin in row_list:
+    pin.value(1)
+
+col_list = [Pin(x, Pin.IN, Pin.PULL_UP) for x in [14, 15, 16, 17]]
+
+key_map = [
+    ["1", "2", "3", "A"],
+    ["4", "5", "6", "B"],
+    ["7", "8", "9", "C"],
+    ["*", "0", "#", "D"]
+]
+
+
+def read_keypad():
+    # From https://peppe8o.com/use-matrix-keypad-with-raspberry-pi-pico-to-get-user-codes-input/
+    for pin in row_list:
+        pin.value(0)
+        res = [pin.value() for pin in col_list]
+
+        if min(res) == 0:
+            key = key_map[row_list.index(pin)][res.index(0)]
+            pin.value(1)
+            return key
+        pin.value(1)
 
 # To keep track of previous RFID card
 previous_card = []
@@ -49,6 +77,10 @@ def card_on_sensor_msg():
     lcd.move_to(0, 1)
     lcd.putstr("sensor.")
 
+
+def enter_bal_msg(action):
+    lcd.move_to(0, 0)
+    lcd.putstr(f"Enter amount ({'-' if action == 'subtract' else '+'})")
 
 # Test AT startup and see if ESP-01 is wired correctly
 if esp8266.startup() is None:
@@ -141,36 +173,6 @@ while True:
             # Function to read entire card, remove comment if needed
             # reader.MFRC522_DumpClassic1K(uid, Start=0, End=64, keyA=defaultKey)
 
-            # If you want to use the ground module to write JWTs to cards
-            if WRITE:
-                jwt_arr = jwt_to_rfid_array("jwts.txt")
-                print(jwt_arr)
-                for x, block_num in enumerate(writable_rfid_blocks()):
-                    print(f"{x=}")
-                    status = reader.auth(reader.AUTHENT1A, block_num, defaultKey, uid)
-                    if status == reader.OK:
-                        try:
-                            if x == 33:
-                                print(jwt_arr)
-                                print(jwt_arr[x])
-
-                            status = reader.write(block_num, jwt_arr[x])
-                            print(f"{jwt_arr[x]=}")
-                            if status != reader.OK:
-                                print("unable to write")
-                                break
-                        except IndexError:
-                            break
-                    else:
-                        print("Authentication error for writing")
-                        break
-
-                    print(f"Block {block_num} success (#{x}).")
-
-                print("Done writing.")
-
-                exit()
-
             # Buffer for storing card information
             jwt_buf = []
 
@@ -218,14 +220,40 @@ while True:
             lcd.move_to(0, 1)
             lcd.putstr("Card read!")
 
+            action = "subtract"
+            amount = 0
+
+            lcd.clear()
+            lcd.move_to(0, 0)
+            enter_bal_msg(action)
+
+            while True:
+                lcd.move_to(0, 1)
+                lcd.putstr(str(amount))
+
+                if key := read_keypad():
+                    print(key)
+                    if key.isdigit():
+                        amount = (amount * 10) + int(key)
+                    elif key == "*":
+                        lcd.clear()
+                        enter_bal_msg(action)
+                        amount = 0
+                    elif key == "D":
+                        break
+                    elif key == "A":
+                        action = "subtract" if action == "add" else "add"
+                        enter_bal_msg(action)
+                    utime.sleep(0.3)
+
             # A valid TapAPI payload
             payload = {
                 "jwt": "".join(jwt_buf),
                 "uid": formatted_uid(uid),
-                "event_name": "example_event",
+                "event_name": "canteen_event",
                 "event_data": {
-                    "hello": "world",
-                    "test": "data"
+                    "action": action,
+                    "bal": amount
                 }
             }
 
@@ -242,14 +270,21 @@ while True:
             print("RECV:")
             print(resp)
 
+            if not resp:
+                lcd.clear()
+                lcd.move_to(0, 0)
+                lcd.putstr("Error. Try again.")
+                utime.sleep(2)
+                continue
+
             # If everything went well (200 OK)
             if resp.response_code == 200:
                 # Display that everything went well to the user, you can do anything in this if statement
                 lcd.clear()
                 lcd.move_to(0, 0)
-                lcd.putstr(f"Hello, G{resp.body['jwt_decoded']['grade']}")
+                lcd.putstr("Success!")
                 lcd.move_to(0, 1)
-                lcd.putstr(resp.body['jwt_decoded']['name'].split(' ')[0])
+                lcd.putstr(f"New: {resp.body['new_bal']}")
 
             print("Done processing.\n")
         else:

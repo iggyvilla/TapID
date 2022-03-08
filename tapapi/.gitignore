@@ -1,2 +1,4 @@
 **/logs
 .idea
+plugins/credentials.json
+plugins/token.json
