@@ -1,4 +1,5 @@
 import psycopg2
+from datetime import datetime
 
 
 def get_balance_of_uid(conn, uid: str) -> int:
@@ -27,7 +28,7 @@ def update_balance_of_uid(conn, uid, new_bal: int, action, bal) -> int:
             # Update the balance with the new_bal
             curs.execute("update canteen_chits set balance = %s where uid = %s;", (new_bal, uid))
             # Add to logs
-            curs.execute("insert into canteen_transactions (uid, action, new_bal, amount) values (%s, %s, %s, %s)", (uid, action, bal, new_bal))
+            curs.execute("insert into canteen_transactions (timestamp, uid, action, new_bal, amount) values (%s, %s, %s, %s, %s)", (datetime.now(), uid, action, bal, new_bal))
             return True
 
 
