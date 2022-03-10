@@ -26,5 +26,5 @@ def run(jwt_decoded: dict, payload_data: TapAPIRequestPayload, args, conn) -> Pl
     if new_bal < 0:
         return PluginResponse(response_code=403, payload={"msg": "missing balance"})
     else:
-        canteen_utils.update_balance_of_uid(conn, uid, new_bal=new_bal)
+        canteen_utils.update_balance_of_uid(conn, uid, new_bal=new_bal, action=event_data["action"], bal=event_data["bal"])
         return PluginResponse(response_code=200, payload={"msg": "success", "new_bal": new_bal})

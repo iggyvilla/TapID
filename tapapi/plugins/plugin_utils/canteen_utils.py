@@ -16,11 +16,18 @@ def get_balance_of_uid(conn, uid: str) -> int:
             return row[0]
 
 
-def update_balance_of_uid(conn, uid, new_bal: int) -> int:
+def update_balance_of_uid(conn, uid, new_bal: int, action, bal) -> int:
+    if action == "subtract":
+        action = 0
+    elif action == "add":
+        action = 1
+
     with conn:
         with conn.cursor() as curs:
             # Update the balance with the new_bal
             curs.execute("update canteen_chits set balance = %s where uid = %s;", (new_bal, uid))
+            # Add to logs
+            curs.execute("insert into canteen_transactions (uid, action, new_bal, amount) values (%s, %s, %s, %s)", (uid, action, bal, new_bal))
             return True
 
 
