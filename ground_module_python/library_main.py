@@ -8,6 +8,33 @@ from sys import exit
 from mfrc522 import MFRC522
 from pico_i2c_lcd import I2cLcd
 
+row_list = [Pin(x, Pin.OUT) for x in [8, 9, 10, 11]]
+
+for pin in row_list:
+    pin.value(1)
+
+col_list = [Pin(x, Pin.IN, Pin.PULL_UP) for x in [14, 15, 16, 17]]
+
+key_map = [
+    ["1", "2", "3", "A"],
+    ["4", "5", "6", "B"],
+    ["7", "8", "9", "C"],
+    ["*", "0", "#", "D"]
+]
+
+
+def read_keypad():
+    # From https://peppe8o.com/use-matrix-keypad-with-raspberry-pi-pico-to-get-user-codes-input/
+    for pin in row_list:
+        pin.value(0)
+        res = [pin.value() for pin in col_list]
+
+        if min(res) == 0:
+            key = key_map[row_list.index(pin)][res.index(0)]
+            pin.value(1)
+            return key
+        pin.value(1)
+
 # To keep track of previous RFID card
 previous_card = []
 
@@ -181,6 +208,21 @@ while True:
 
             lcd.move_to(0, 1)
             lcd.putstr("Card read!")
+            book_id = 0
+            while True:
+                lcd.move_to(0, 1)
+                lcd.putstr("Enter book ID:")
+
+                if key := read_keypad():
+                    print(key)
+                    if key.isdigit():
+                        book_id = (book_id * 10) + int(key)
+                    elif key == "*":
+                        lcd.clear()
+                        book_id = 0
+                    elif key == "D":
+                        break
+                    utime.sleep(0.3)
 
             # A valid TapAPI payload
             payload = {
@@ -188,7 +230,7 @@ while True:
                 "uid": formatted_uid(uid),
                 "event_name": "borrow_book",
                 "event_data": {
-                    "book_id": 1,
+                    "book_id": book_id,
                     "due_on": 7,
                     "save_to_google_docs": True
                 }
@@ -223,6 +265,7 @@ while True:
                 lcd.putstr(f"Borrowed")
                 lcd.move_to(0, 1)
                 lcd.putstr(f"{resp.body['entry'][1]}")
+                utime.sleep(2)
                 continue
 
             print("Done processing.\n")
