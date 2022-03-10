@@ -57,7 +57,7 @@ def run(jwt_decoded: dict, payload_data: TapAPIRequestPayload, args, conn) -> Pl
             due_on=data['due_on'],
             conn=conn
         )
-    except KeyError:
+    except (KeyError, psycopg2.errors.InvalidForeignKey):
         return PluginResponse(response_code=400, payload={"msg": "invalid data"})
     except psycopg2.errors.Error:
         return PluginResponse(response_code=500, payload={"msg": "internal server error"})
