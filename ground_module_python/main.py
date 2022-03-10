@@ -208,6 +208,7 @@ while True:
             print(resp)
 
             if not resp:
+                # If there was an error parsing the HTTP response
                 lcd.clear()
                 lcd.move_to(0, 0)
                 lcd.putstr("Error. Try again.")
@@ -222,6 +223,7 @@ while True:
                 lcd.putstr(f"Borrowed")
                 lcd.move_to(0, 1)
                 lcd.putstr(f"{resp.body['entry'][1]}")
+                continue
 
             print("Done processing.\n")
         else:
