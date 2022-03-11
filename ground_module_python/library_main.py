@@ -266,12 +266,14 @@ while True:
                 lcd.move_to(0, 1)
                 lcd.putstr(f"{resp.body['entry'][1]}")
                 utime.sleep(2)
+                card_on_sensor_msg()
                 continue
             elif resp.response_code == 403:
                 lcd.clear()
                 lcd.move_to(0, 0)
                 lcd.putstr("Unknown book ID")
                 utime.sleep(2)
+                card_on_sensor_msg()
                 continue
 
             print("Done processing.\n")

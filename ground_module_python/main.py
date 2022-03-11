@@ -85,33 +85,62 @@ def enter_bal_msg(action):
     lcd.move_to(0, 0)
     lcd.putstr(f"Enter amount ({'-' if action == 'subtract' else '+'})")
 
+before = utime.ticks_ms()
+
 # Test AT startup and see if ESP-01 is wired correctly
 if esp8266.startup() is None:
     print("ESP8266 not setup properly")
+    lcd.clear()
+    lcd.putstr("ESP01 error")
     exit()
 
 clear_loading_screen(2)
 
+print("Took: ")
+print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
+
+before = utime.ticks_ms()
+
 # Set the Wi-Fi mode to station mode (connects to WiFi instead of creating its own WiFi signal)
 esp8266.wifi_mode(ESP8266.MODE_STATION)
 
+print("Took: ")
+print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
+
 clear_loading_screen(3)
+
+before = utime.ticks_ms()
 
 # Connect to an AP
 esp8266.connect_to_wifi("Akatsuki Hideout", "8prongedseal", timeout=6000)
 
+print("Took: ")
+print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
+
 clear_loading_screen(4)
+
+before = utime.ticks_ms()
 
 # Get the modules IP address for metric use
 resp = esp8266.get_local_ip_address()
 module_ip = parse_ip_response(resp)
 
+print("Took: ")
+print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
+
 clear_loading_screen(8)
+
+before = utime.ticks_ms()
 
 # Make sure we only connect to one network (the ESP-01 can connect to multiple networks)
 esp8266.set_multiple_connections(False)
 
 clear_loading_screen(10)
+
+print("Took: ")
+print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
+
+before = utime.ticks_ms()
 
 # Establish a TCP connection to the HTTP server
 conn_resp = esp8266.establish_connection("TCP", SERVER_IP, SERVER_PORT)
@@ -125,8 +154,16 @@ if parse_at_response(conn_resp) == "ERROR\nCLOSED\n":
     lcd.putstr("TapID server.")
     exit()
 
+print("Took: ")
+print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
+
+before = utime.ticks_ms()
+
 # Make a GET request to TapAPI to see if the server is responsive
 payload = esp8266.get(SERVER_IP, "/")
+
+print("Took: ")
+print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
 
 clear_loading_screen(12)
 
@@ -249,6 +286,8 @@ while True:
                         enter_bal_msg(action)
                     utime.sleep(0.3)
 
+            before = utime.ticks_ms()
+
             # A valid TapAPI payload
             payload = {
                 "jwt": "".join(jwt_buf),
@@ -283,12 +322,17 @@ while True:
             # If everything went well (200 OK)
             if resp.response_code == 200:
                 # Display that everything went well to the user, you can do anything in this if statement
+
+                print("Took: ")
+                print(utime.ticks_diff(utime.ticks_ms(), before), end="\n\n")
+
                 lcd.clear()
                 lcd.move_to(0, 0)
                 lcd.putstr("Success!")
                 lcd.move_to(0, 1)
                 lcd.putstr(f"New: P{resp.body['new_bal']}")
                 utime.sleep(2)
+                card_on_sensor_msg()
                 continue
             elif resp.response_code == 403:
                 lcd.clear()
@@ -297,6 +341,7 @@ while True:
                 lcd.move_to(0, 1)
                 lcd.putstr(" funds.")
                 utime.sleep(2)
+                card_on_sensor_msg()
                 continue
 
             print("Done processing.\n")
