@@ -1,5 +1,5 @@
 """
-CANTEEN MODULE CODE
+LIBRARY MODULE CODE
 """
 from machine import I2C, Pin, UART
 from utils import parse_at_response, jwt_to_rfid_array, formatted_uid, ESP8266, writable_rfid_blocks, parse_ip_response
@@ -7,7 +7,6 @@ import utime
 from sys import exit
 from mfrc522 import MFRC522
 from pico_i2c_lcd import I2cLcd
-import utime
 
 row_list = [Pin(x, Pin.OUT) for x in [8, 9, 10, 11]]
 
@@ -38,7 +37,6 @@ def read_keypad():
 
 # To keep track of previous RFID card
 previous_card = []
-
 
 # MFRC522 reader class instantiation
 reader = MFRC522(spi_id=0, sck=2, miso=4, mosi=3, cs=1, rst=0)
@@ -77,15 +75,9 @@ def card_on_sensor_msg():
     lcd.putstr("sensor.")
 
 
-def enter_bal_msg(action):
-    lcd.move_to(0, 0)
-    lcd.putstr(f"Enter amount ({'-' if action == 'subtract' else '+'})")
-
 # Test AT startup and see if ESP-01 is wired correctly
 if esp8266.startup() is None:
     print("ESP8266 not setup properly")
-    lcd.clear()
-    lcd.putstr("ESP01 error")
     exit()
 
 clear_loading_screen(2)
@@ -125,6 +117,7 @@ if parse_at_response(conn_resp) == "ERROR\nCLOSED\n":
 
 # Make a GET request to TapAPI to see if the server is responsive
 payload = esp8266.get(SERVER_IP, "/")
+
 clear_loading_screen(12)
 
 lcd.clear()
@@ -134,10 +127,6 @@ lcd.move_to(0, 1)
 lcd.putstr(str(payload.body['api_version']))
 
 utime.sleep(1)
-
-# Message to show if the module is in WRITE mode
-if WRITE:
-    print("Ground Module in write mode. Writing JWT from jwts.txt")
 
 print("SYSTEM INITIALIZATION COMPLETE\n\n")
 
@@ -219,43 +208,31 @@ while True:
 
             lcd.move_to(0, 1)
             lcd.putstr("Card read!")
-
-            action = "subtract"
-            amount = 0
-
-            lcd.clear()
-            lcd.move_to(0, 0)
-            enter_bal_msg(action)
-
+            book_id = 0
             while True:
                 lcd.move_to(0, 1)
-                lcd.putstr(str(amount))
+                lcd.putstr("Enter book ID:")
 
                 if key := read_keypad():
                     print(key)
                     if key.isdigit():
-                        amount = (amount * 10) + int(key)
+                        book_id = (book_id * 10) + int(key)
                     elif key == "*":
                         lcd.clear()
-                        enter_bal_msg(action)
-                        amount = 0
+                        book_id = 0
                     elif key == "D":
                         break
-                    elif key == "A":
-                        action = "subtract" if action == "add" else "add"
-                        enter_bal_msg(action)
                     utime.sleep(0.3)
 
             # A valid TapAPI payload
             payload = {
                 "jwt": "".join(jwt_buf),
                 "uid": formatted_uid(uid),
-                "event_name": "canteen_event",
-                "event_data": {
-                    "action": action,
-                    "bal": amount
-                }
+                "event_name": "attendance",
+                "event_data": {}
             }
+
+            print(payload)
 
             # Establish a TCP HTTP connection to the server ip and port
             esp8266.establish_connection(type="TCP", ip=SERVER_IP, port=SERVER_PORT)
@@ -269,6 +246,7 @@ while True:
             print(resp)
 
             if not resp:
+                # If there was an error parsing the HTTP response
                 lcd.clear()
                 lcd.move_to(0, 0)
                 lcd.putstr("Error. Try again.")
@@ -280,18 +258,18 @@ while True:
                 # Display that everything went well to the user, you can do anything in this if statement
                 lcd.clear()
                 lcd.move_to(0, 0)
-                lcd.putstr("Success!")
+                lcd.putstr(f"Attendance logged")
                 lcd.move_to(0, 1)
-                lcd.putstr(f"New: P{resp.body['new_bal']}")
+                lcd.putstr(f"{resp.body['data']['time_now']}")
                 utime.sleep(2)
                 card_on_sensor_msg()
                 continue
-            elif resp.response_code == 403:
+            elif resp.response_code == 500:
                 lcd.clear()
                 lcd.move_to(0, 0)
-                lcd.putstr("Insufficient")
-                lcd.move_to(0, 1)
-                lcd.putstr(" funds.")
+                lcd.putstr("Internal server")
+                lcd.move_to(0, 0)
+                lcd.putstr("error")
                 utime.sleep(2)
                 card_on_sensor_msg()
                 continue

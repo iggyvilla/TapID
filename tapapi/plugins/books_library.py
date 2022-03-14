@@ -1,3 +1,5 @@
+import google.auth.exceptions
+
 from plugins.plugin_utils import library_utils
 from utils.parse_payload import TapAPIRequestPayload
 import os
@@ -34,7 +36,12 @@ if os.path.exists('plugins/token.json'):
 # If there are no (valid) credentials available, let the user log in.
 if not creds or not creds.valid:
     if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+        try:
+            creds.refresh(Request())
+        except google.auth.exceptions.RefreshError:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'plugins/credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
     else:
         flow = InstalledAppFlow.from_client_secrets_file(
             'plugins/credentials.json', SCOPES)
