@@ -258,7 +258,7 @@ while True:
                 # Display that everything went well to the user, you can do anything in this if statement
                 lcd.clear()
                 lcd.move_to(0, 0)
-                lcd.putstr(f"Attendance logged")
+                lcd.putstr(f"Logged")
                 lcd.move_to(0, 1)
                 lcd.putstr(f"{resp.body['data']['time_now']}")
                 utime.sleep(2)
